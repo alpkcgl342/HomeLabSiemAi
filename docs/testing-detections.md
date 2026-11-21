@@ -10,6 +10,16 @@ A rule you have never seen fire is a rule you can't trust. This project tests de
 | Sigma | `sigma check rules/sigma` | Rules follow the Sigma spec and convert to Elasticsearch/Lucene |
 | Analytics + AI plumbing | `cd ai-assistant && python -m pytest -q` | All five injected attack scenarios are found, no beaconing false positive on normal devices, both report languages render, LLM JSON handling |
 
+Quick end-to-end check from **Windows** (PowerShell) - no Linux machine needed:
+
+```powershell
+curl.exe -A "Mozilla/5.0 (compatible; Nmap Scripting Engine; https://nmap.org/book/nse.html)" http://example.com
+```
+
+Within 1-2 minutes Security Onion → *Alerts* shows **ET SCAN Possible Nmap User-Agent Observed**
+(sid 2024364). This proves capture → Suricata → Elasticsearch → SOC works. (The classic
+`testmynids.org` check no longer works - the domain expired.)
+
 Expected output of the replay test:
 
 ```
