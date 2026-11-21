@@ -3,12 +3,14 @@
     homesiem demo                    # generate synthetic data, analyze it, write a report
     homesiem analyze -c config.yaml  # analyze real Security Onion data
     homesiem ask "Which device is the most suspicious and why?"
+    homesiem serve                   # web panel on http://127.0.0.1:8080
 """
 from __future__ import annotations
 
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -33,6 +35,31 @@ def pipeline(cfg: dict) -> tuple[Path, Path]:
     return report.write(md, data, cfg["output_dir"], cfg["language"])
 
 
+def use_demo_data(cfg: dict, out: Path, days: int = 3) -> Path:
+    """Generate synthetic logs and point the config at them."""
+    out = generate(out, days=days, tz=cfg.get("timezone", "UTC"))
+    cfg["source"]["type"] = "files"
+    cfg["source"]["files"].update(zeek_dir=str(out / "zeek"), suricata_eve=str(out / "suricata/eve.json"))
+    if not cfg.get("assets_file") or not Path(cfg["assets_file"]).exists():
+        for cand in (out.resolve().parent, Path.cwd().parent, Path.cwd()):
+            if (cand / "assets.example.yaml").exists():
+                cfg["assets_file"] = str(cand / "assets.example.yaml")
+                break
+    return out
+
+
+def findings_from_json(data: dict) -> list:
+    from .models import Finding
+
+    findings = []
+    for f in data.get("findings", []):
+        f = dict(f)
+        f.pop("first_seen", None)
+        f.pop("last_seen", None)
+        findings.append(Finding(**f))
+    return findings
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="homesiem", description="AI assistant for a home Security Onion SIEM")
     p.add_argument("-c", "--config", help="YAML config file (default: built-in defaults)")
@@ -49,26 +76,36 @@ def main(argv: list[str] | None = None) -> int:
     a = sub.add_parser("ask", help="ask the AI a question about the latest findings file")
     a.add_argument("question")
     a.add_argument("--findings", help="findings-*.json (default: newest in output_dir)")
+    s = sub.add_parser("serve", help="start the local web panel")
+    s.add_argument("--host", default="127.0.0.1", help="bind address (0.0.0.0 only inside Docker)")
+    s.add_argument("--port", type=int, default=8080)
+    s.add_argument("--allow-host", action="append", default=[],
+                   help="extra Host header to accept, e.g. the PC's LAN name")
 
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(levelname)s %(name)s: %(message)s")
-    cfg = load_config(args.config)
+    config_path = args.config or os.environ.get("HOMESIEM_CONFIG")
+    if config_path and not Path(config_path).exists():
+        if args.config:
+            p.error(f"config file not found: {config_path}")
+        logging.warning("HOMESIEM_CONFIG=%s not found - using built-in defaults", config_path)
+        config_path = None
+    cfg = load_config(config_path)
     if args.language:
         cfg["language"] = args.language
     if args.no_llm:
         cfg["llm"]["enabled"] = False
 
     if args.cmd == "demo":
-        out = generate(args.out, days=args.days, tz=cfg.get("timezone", "UTC"))
-        cfg["source"]["type"] = "files"
-        cfg["source"]["files"].update(zeek_dir=str(out / "zeek"), suricata_eve=str(out / "suricata/eve.json"))
-        if not args.config:
-            for cand in (out.resolve().parent, Path.cwd().parent, Path.cwd()):
-                if (cand / "assets.example.yaml").exists():
-                    cfg["assets_file"] = str(cand / "assets.example.yaml")
-                    break
+        out = use_demo_data(cfg, Path(args.out), days=args.days)
         print(f"Synthetic logs written to {out.resolve()}")
+
+    if args.cmd == "serve":
+        from .web import serve
+
+        serve(cfg, host=args.host, port=args.port, extra_hosts=args.allow_host)
+        return 0
 
     if args.cmd in ("demo", "analyze"):
         md_path, json_path = pipeline(cfg)
@@ -81,12 +118,7 @@ def main(argv: list[str] | None = None) -> int:
             print("No findings file found - run `homesiem analyze` first.", file=sys.stderr)
             return 1
         data = json.loads(files[-1].read_text(encoding="utf-8"))
-        from .models import Finding
-
-        findings = []
-        for f in data["findings"]:
-            f.pop("first_seen", None), f.pop("last_seen", None)
-            findings.append(Finding(**f))
+        findings = findings_from_json(data)
         print(OllamaClient(cfg["llm"], cfg["language"]).ask(args.question, data["stats"], findings))
         return 0
     return 1

@@ -16,7 +16,7 @@ homesiem = "homesiem.cli:main"
 include = ["homesiem*"]
 
 [tool.setuptools.package-data]
-homesiem = ["templates/*.j2"]
+homesiem = ["templates/*.j2", "templates/*.html"]
 
 [tool.ruff]
 line-length = 120

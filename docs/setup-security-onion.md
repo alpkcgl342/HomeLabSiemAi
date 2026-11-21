@@ -85,7 +85,14 @@ cp config/config.example.yaml config/config.yaml
 ### Run
 
 ```bash
-docker compose up -d ollama
+cp config/config.example.yaml config/config.yaml   # edit source / home_net / language
+docker compose up -d ollama panel                  # panel: http://localhost:8080
+```
+
+Open the panel and press **Run analysis** (it reads `config/config.yaml` via `HOMESIEM_CONFIG`).
+The CLI does the same from a terminal:
+
+```bash
 docker compose exec ollama ollama pull llama3.1:8b
 docker compose run --rm assistant -c /work/config/config.yaml analyze
 docker compose run --rm assistant -c /work/config/config.yaml ask "Which device should I worry about?"
