@@ -1,0 +1,30 @@
+title: Scripting Tool User-Agent From Home Device
+id: 48fefd37-c446-4cc7-84d9-38bb1f12d9d5
+status: experimental
+description: |
+  Plain-HTTP request with a scripting/CLI user-agent. On a home network these are rare
+  (except on a developer's laptop) and are typical for malware downloaders and IoT botnets.
+references:
+  - https://attack.mitre.org/techniques/T1105/
+author: homenet-siem-ai
+date: 2026-11-21
+tags:
+  - attack.command-and-control
+  - attack.t1105
+  - attack.t1071.001
+logsource:
+  product: zeek
+  service: http
+detection:
+  selection:
+    user_agent|contains:
+      - 'python-requests'
+      - 'Wget/'
+      - 'curl/'
+      - 'WindowsPowerShell'
+      - 'Go-http-client'
+      - 'libwww-perl'
+  condition: selection
+falsepositives:
+  - Developers, package managers, NAS update scripts
+level: low

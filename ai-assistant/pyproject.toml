@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "homesiem"
+version = "0.1.0"
+description = "AI-assisted analytics and reporting for a home Security Onion SIEM"
+requires-python = ">=3.10"
+dependencies = ["requests>=2.31", "PyYAML>=6.0", "Jinja2>=3.1", "numpy>=1.26", "scikit-learn>=1.4"]
+
+[project.scripts]
+homesiem = "homesiem.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["homesiem*"]
+
+[tool.setuptools.package-data]
+homesiem = ["templates/*.j2"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = ["E741", "E501", "B905"]

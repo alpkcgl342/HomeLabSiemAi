@@ -1,0 +1,25 @@
+title: Device With Offensive-Security OS Hostname Joined Network
+id: 175048ed-371f-4ed0-a3bf-327177ffdb24
+status: experimental
+description: A DHCP client announced a default hostname of a penetration-testing distribution (Kali, Parrot, BlackArch).
+references:
+  - https://attack.mitre.org/techniques/T1200/
+author: homenet-siem-ai
+date: 2026-11-21
+tags:
+  - attack.initial-access
+  - attack.t1200
+logsource:
+  product: zeek
+  service: dhcp
+detection:
+  selection:
+    host_name|contains:
+      - 'kali'
+      - 'parrot'
+      - 'blackarch'
+      - 'pentest'
+  condition: selection
+falsepositives:
+  - Your own lab machines
+level: medium

@@ -1,0 +1,50 @@
+# homenet-siem-ai configuration
+# Copy to config/config.yaml (git-ignored) and adjust. Relative paths are resolved
+# against THIS file's folder. Every value can also be overridden by env vars
+# (HOMESIEM_OLLAMA_URL, HOMESIEM_OLLAMA_MODEL, HOMESIEM_LANGUAGE, HOMESIEM_ES_URL, ...).
+
+home_net: ["192.168.1.0/24"]      # your LAN range(s)
+language: tr                       # report language: en | tr
+timezone: Europe/Istanbul          # used for "night time" upload detection
+
+source:
+  # files         -> read Zeek JSON + Suricata eve.json copied from Security Onion (/nsm/...)
+  # elasticsearch -> query Security Onion's Elasticsearch directly (see docs/setup-security-onion.md)
+  type: files
+  files:
+    zeek_dir: ../sample-data/zeek
+    suricata_eve: ../sample-data/suricata/eve.json
+  elasticsearch:
+    url: https://192.168.1.250:9200   # Security Onion VM IP
+    username: ""                       # better: set HOMESIEM_ES_USER / HOMESIEM_ES_PASSWORD
+    password: ""
+    verify_tls: false                  # Security Onion uses a self-signed CA by default
+    lookback_hours: 168                # 7 days
+    max_docs: 20000
+    index: "logs-*"
+    # Check these in Security Onion -> Hunt and adjust if your version differs
+    queries:
+      alerts: "event.dataset:alert"
+      conn: "event.dataset:conn"
+      dns: "event.dataset:dns"
+      dhcp: "event.dataset:dhcp"
+
+assets_file: ../assets.yaml          # trusted device inventory (copy assets.example.yaml)
+
+analytics:
+  beaconing: {min_connections: 12, max_cv: 0.15, min_interval_s: 10, min_duration_s: 3600}
+  dns: {min_entropy: 3.8, min_label_len: 25, min_unique_subdomains: 30}
+  port_scan: {min_unique_ports: 40, window_s: 300}
+  exfil: {min_bytes_out: 500000000}  # 500 MB per host->destination
+  night_hours: [1, 5]                # 01:00-05:59 local time
+  anomaly: {enabled: true, contamination: 0.02}
+
+llm:
+  enabled: true
+  provider: ollama
+  url: http://localhost:11434        # in docker-compose: http://ollama:11434
+  model: llama3.1:8b                 # any Ollama chat model works, e.g. qwen2.5:7b, mistral
+  timeout_s: 180
+  max_findings: 25                   # only the top N findings are sent to the LLM
+
+output_dir: ../reports

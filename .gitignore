@@ -1,0 +1,22 @@
+# Real data and secrets - NEVER commit
+so-logs/
+assets.yaml
+config/config.yaml
+.env
+*.pcap
+*.pcapng
+
+# Generated output (example reports live in docs/report/)
+reports/*
+!reports/.gitkeep
+sample-data/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+.venv/
+venv/

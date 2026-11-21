@@ -1,0 +1,39 @@
+# AI assistant stack that runs on your PC next to the Security Onion VM.
+#   docker compose up -d ollama
+#   docker compose exec ollama ollama pull llama3.1:8b
+#   docker compose run --rm assistant demo          # synthetic data
+#   docker compose run --rm assistant -c /work/config/config.yaml analyze
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: homesiem-ollama
+    ports:
+      - "127.0.0.1:11434:11434"   # only reachable from this PC
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    # Uncomment if you have an NVIDIA GPU + nvidia-container-toolkit:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  assistant:
+    build: ./ai-assistant
+    image: homenet-siem-ai/assistant:latest
+    depends_on: [ollama]
+    working_dir: /work/ai-assistant
+    environment:
+      HOMESIEM_OLLAMA_URL: http://ollama:11434
+      HOMESIEM_TIMEZONE: Europe/Istanbul
+    volumes:
+      # The whole repo is mounted, so config/, assets.yaml, sample-data/, so-logs/
+      # and reports/ resolve exactly like when running locally.
+      - .:/work
+    profiles: ["cli"]   # run on demand, not as a daemon
+
+volumes:
+  ollama-models:

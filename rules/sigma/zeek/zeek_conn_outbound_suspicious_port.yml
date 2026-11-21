@@ -1,0 +1,34 @@
+title: Outbound Connection to Port Commonly Used by Malware
+id: e2828f67-5544-473a-9417-aeeda4cef357
+status: experimental
+description: Home device connected to an internet host on a port typical for reverse shells, IRC botnets or RATs.
+references:
+  - https://attack.mitre.org/techniques/T1571/
+author: homenet-siem-ai
+date: 2026-11-21
+tags:
+  - attack.command-and-control
+  - attack.t1571
+logsource:
+  product: zeek
+  service: conn
+detection:
+  selection:
+    id.resp_p:
+      - 4444
+      - 1337
+      - 31337
+      - 6666
+      - 6667
+      - 6697
+      - 5555
+      - 9999
+  filter_internal:
+    id.resp_h|cidr:
+      - '10.0.0.0/8'
+      - '172.16.0.0/12'
+      - '192.168.0.0/16'
+  condition: selection and not filter_internal
+falsepositives:
+  - Games and some IoT vendors use high ports - tune per device
+level: medium

@@ -1,0 +1,28 @@
+title: Long Random TXT DNS Query (Possible DNS Tunneling)
+id: c197131c-36d7-477e-82b7-c7e25d0889b9
+status: experimental
+description: TXT lookups with a very long hex/base32-looking first label are typical for DNS tunneling tools (iodine, dnscat2, DNSExfiltrator).
+references:
+  - https://attack.mitre.org/techniques/T1071/004/
+author: homenet-siem-ai
+date: 2026-11-21
+tags:
+  - attack.command-and-control
+  - attack.exfiltration
+  - attack.t1071.004
+  - attack.t1048
+logsource:
+  product: zeek
+  service: dns
+detection:
+  selection:
+    qtype_name: 'TXT'
+    query|re: '^[a-z0-9]{30,}\.'
+  filter_known:
+    query|endswith:
+      - '._domainkey.gmail.com'
+      - '.spf.protection.outlook.com'
+  condition: selection and not filter_known
+falsepositives:
+  - Anti-spam / DKIM lookups by a mail server on the LAN
+level: high

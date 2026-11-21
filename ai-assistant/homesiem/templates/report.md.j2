@@ -1,0 +1,74 @@
+# {{ L.title }}
+
+| | |
+|---|---|
+| **{{ L.period }}** | {{ period_start }} → {{ period_end }} |
+| **{{ L.generated }}** | {{ generated }} |
+| **{{ L.ai_model }}** | {{ ai_model }} |
+
+## {{ L.summary }}
+
+{{ summary }}
+
+## {{ L.overview }}
+
+| {{ L.metric }} | {{ L.value }} |
+|---|---:|
+{% for k, v in stats_rows %}| {{ k }} | {{ v }} |
+{% endfor %}
+
+### {{ L.by_severity }}
+
+| critical | high | medium | low | info |
+|---:|---:|---:|---:|---:|
+| {{ sev.critical }} | {{ sev.high }} | {{ sev.medium }} | {{ sev.low }} | {{ sev.info }} |
+
+## {{ L.findings }}
+
+| # | {{ L.risk }} | {{ L.severity }} | {{ L.finding }} | {{ L.host }} | {{ L.source }} | MITRE |
+|---:|:---:|---|---|---|---|---|
+{% for f in findings %}| {{ loop.index }} | **{{ f.ai_risk }}**/10 | {{ f.severity }} | {{ f.title | e_md }} | {{ f.host or "-" }} | {{ f.source }} | {{ f.mitre | mitre_links }} |
+{% endfor %}
+
+## {{ L.details }}
+
+{% for f in findings[:15] %}
+### {{ loop.index }}. {{ f.title | e_md }}
+
+- **{{ L.risk }}:** {{ f.ai_risk }}/10 · **{{ L.severity }}:** {{ f.severity }} · **{{ L.count }}:** {{ f.count }}
+- **{{ L.time }}:** {{ f.first_seen | dt }} → {{ f.last_seen | dt }}
+- **{{ L.analysis }}:** {{ f.ai_explanation }}
+- **{{ L.action }}:** {{ f.ai_action }}
+
+<details><summary>{{ L.evidence }}</summary>
+
+```json
+{{ f.evidence | tojson_pretty }}
+```
+</details>
+
+{% endfor %}
+
+## {{ L.top_talkers }}
+
+| {{ L.host }} | {{ L.connections }} | {{ L.out }} | {{ L["in"] }} |
+|---|---:|---:|---:|
+{% for t in top_talkers %}| {{ t.host }} | {{ t.conns }} | {{ t.out }} | {{ t.inb }} |
+{% endfor %}
+
+## {{ L.top_domains }}
+
+| {{ L.domain }} | {{ L.queries }} |
+|---|---:|
+{% for d, n in top_domains %}| {{ d | e_md }} | {{ n }} |
+{% endfor %}
+
+## {{ L.mitre_cov }}
+
+| {{ L.technique }} | {{ L.findings }} |
+|---|---:|
+{% for t, n in mitre_counts %}| [{{ t }}](https://attack.mitre.org/techniques/{{ t | replace(".", "/") }}/) | {{ n }} |
+{% endfor %}
+
+---
+_{{ L.footer }}_

@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: AI assistant (lint + tests + demo report)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-assistant
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ai-assistant/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: python -m pytest -q
+      - name: Generate demo report (no LLM in CI)
+        run: python -m homesiem --no-llm -l tr demo --out /tmp/sample-data
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-report
+          path: reports/
+
+  sigma:
+    name: Sigma rules (validate + convert)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install sigma-cli pySigma-backend-elasticsearch
+      - run: sigma check rules/sigma
+      - run: sigma convert -t lucene -p ecs_zeek_beats rules/sigma
+
+  suricata:
+    name: Suricata rules (syntax + PCAP replay)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q suricata python3-scapy
+      - run: rules/tests/run_rule_tests.sh
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t homenet-siem-ai/assistant:ci ai-assistant
+      - run: docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" -w /work/ai-assistant homenet-siem-ai/assistant:ci --no-llm demo --out /tmp/data

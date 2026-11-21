@@ -1,0 +1,26 @@
+title: Large Single Upload to Internet (Possible Exfiltration)
+id: 80e43699-5bdb-4b0c-a7ae-39954866b053
+status: experimental
+description: A single connection sent more than 500 MB out of the house. Expect cloud backups here - whitelist them.
+references:
+  - https://attack.mitre.org/techniques/T1048/
+author: homenet-siem-ai
+date: 2026-11-21
+tags:
+  - attack.exfiltration
+  - attack.t1048
+logsource:
+  product: zeek
+  service: conn
+detection:
+  selection:
+    orig_bytes|gte: 500000000
+  filter_internal:
+    id.resp_h|cidr:
+      - '10.0.0.0/8'
+      - '172.16.0.0/12'
+      - '192.168.0.0/16'
+  condition: selection and not filter_internal
+falsepositives:
+  - Cloud backup (iCloud, Google Photos, OneDrive), video uploads
+level: medium

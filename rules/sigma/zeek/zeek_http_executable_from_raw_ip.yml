@@ -1,0 +1,29 @@
+title: Executable or Script Downloaded From Raw IP Address
+id: fb27ef68-2913-4ce9-9986-fe6ce831c5ab
+status: experimental
+description: HTTP download of an executable/script where the Host header is a bare IP address - common for malware droppers.
+references:
+  - https://attack.mitre.org/techniques/T1105/
+author: homenet-siem-ai
+date: 2026-11-21
+tags:
+  - attack.command-and-control
+  - attack.t1105
+logsource:
+  product: zeek
+  service: http
+detection:
+  selection_host:
+    host|re: '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$'
+  selection_ext:
+    uri|endswith:
+      - '.exe'
+      - '.dll'
+      - '.ps1'
+      - '.sh'
+      - '.bin'
+      - '.apk'
+  condition: all of selection_*
+falsepositives:
+  - Router / IoT firmware updates served from IPs
+level: high
