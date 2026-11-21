@@ -53,17 +53,35 @@ sanal makinede, yapay zeka bileşenleri ise Docker'da çalıştırıldı.
 
 ## 4. Kurulum (özet)
 
+Kullanılan sürüm **Security Onion 3.4.0** (2 Kasım 2026). 2.4 sürümünün desteği 1 Ekim 2026'da
+sona erdiği için 3.x tercih edildi. Ayrıntılı adımlar: [setup-security-onion.md](../setup-security-onion.md)
+
 | Adım | Açıklama |
 |---|---|
-| 1 | Security Onion ISO'su indirildi, imzası doğrulandı |
-| 2 | VM oluşturuldu: 4 vCPU, ▢ GB RAM, 200 GB disk, 2 ağ kartı (yönetim + promiscuous dinleme) |
-| 3 | EVAL kurulumu yapıldı, yönetim IP'si ▢ olarak atandı |
-| 4 | `HOME_NET` ve `DNS_SERVERS` değişkenleri tanımlandı |
-| 5 | Özel kurallar Detections ekranından eklendi |
-| 6 | `docker compose up -d ollama` komutu çalıştırıldı ve `llama3.1:8b` modeli indirildi |
-| 7 | Loglar `fetch_so_logs.sh` ile çekildi, `homesiem analyze` ile rapor üretildi |
+| 1 | Security Onion 3.4.0 ISO'su (~12 GB) indirildi, SHA256 özeti `Get-FileHash` ile doğrulandı |
+| 2 | VirtualBox VM'i oluşturuldu: Oracle Linux 9.x, 4 vCPU, 12 GB RAM, 200 GB dinamik disk |
+| 3 | İki köprü (bridged) ağ kartı: enp0s3 yönetim, enp0s8 dinleme (promiscuous: Allow All) |
+| 4 | EVAL kurulumu: statik IP `192.168.1.250/24`, gateway `192.168.1.1`, web erişimi yalnızca analist PC'ye (`192.168.1.100`) açık |
+| 5 | `HOME_NET` ve `DNS_SERVERS` değişkenleri tanımlandı ▢ |
+| 6 | Özel kurallar Detections ekranından eklendi ▢ |
+| 7 | `docker compose up -d ollama panel` ile Ollama ve web paneli başlatıldı, `llama3.1:8b` indirildi |
+| 8 | Loglar `fetch_so_logs.sh` ile çekildi, panelden analiz çalıştırıldı ▢ |
 
-Kullanılan donanım: ▢ (CPU, RAM, switch modeli)
+**Kullanılan donanım:** Windows ana makine, 32 GB RAM, 12 iş parçacığı, kablolu Ethernet (Realtek GbE).
+Port mirroring switch'i yok; ilk aşamada sensör ana makinenin kendi trafiğini ve ağdaki yayın
+trafiğini (DHCP, ARP, mDNS, SSDP) görüyor.
+
+**Kurulumda karşılaşılan sorunlar ve çözümleri:**
+
+* **Docker imajı çekme hatası:** `docker compose` yerel olarak derlenmesi gereken asistan imajını
+  Docker Hub'dan çekmeye çalıştı. Çözüm: `--build` parametresi ve `pull_policy: build`.
+* **Klavye düzeni:** ISO kurulumu ve kurtarma ortamı ABD klavye düzenini, kurulu sistemin konsolu ise
+  Türkçe düzeni kullanıyor. Bu yüzden alt çizgi içeren kullanıcı adı girişte farklı yazıldı ve
+  "Login incorrect" hatası alındı. ISO'daki Rescue modu ile gerçek kullanıcı adı (`ls /mnt/sysroot/home`)
+  bulundu ve şifre sıfırlandı (`passwd`, `touch /.autorelabel`).
+* **ISO takılı kalınca kurulum menüsü:** Yeniden başlatmada ISO çıkarılmadığı için menü kendiliğinden
+  kurulum seçeneğine geçti ve disk silme onayı istedi. Onay verilmeden ISO çıkarıldı ve VM sıfırlandı.
+* **LLM performansı:** GPU olmadan `llama3.1:8b` ile bir analiz yaklaşık 8-10 dakika sürdü.
 
 ## 5. Tespit kuralları
 
