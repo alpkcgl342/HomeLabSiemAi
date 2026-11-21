@@ -10,5 +10,6 @@ RUN pip install --no-cache-dir --no-deps . \
  && useradd --create-home --uid 1000 analyst
 USER analyst
 
+EXPOSE 8080
 ENTRYPOINT ["homesiem"]
 CMD ["--help"]

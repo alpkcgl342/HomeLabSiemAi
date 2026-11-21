@@ -20,6 +20,8 @@ flowchart LR
     AI --> REP[Weekly report<br/>EN / TR]
 ```
 
+![Web panel](docs/img/panel-dark.png)
+
 ## Features
 
 - **18 custom Suricata rules** for home threats: LAN scans, DNS bypass & DoH, DNS tunneling,
@@ -31,6 +33,9 @@ flowchart LR
 - **Machine learning**: Isolation Forest anomaly detection per host and hour, with explanations.
 - **Local LLM (Ollama)**: risk score 1-10, explanation, recommended action, executive summary and
   a `homesiem ask "..."` Q&A command. Prompt-injection-aware; falls back to rule-based triage when offline.
+- **Web panel** (`homesiem serve`): KPIs, hourly traffic with finding markers, device risk, top uploaders,
+  MITRE coverage, filterable findings table with AI analysis + evidence, "Ask the AI" box, run analysis
+  with one click. TR/EN, light/dark, stdlib-only server bound to localhost with CSP and DNS-rebinding protection.
 - **Reporting**: Markdown report + `findings.json`, English 🇬🇧 or Turkish 🇹🇷.
 - **Detection-as-code**: GitHub Actions run lint, unit tests, `sigma check`, Suricata syntax check and PCAP replay.
 - **Privacy tooling**: `scripts/sanitize_logs.py` pseudonymises IPs, MACs and hostnames before anything is shared.
@@ -55,6 +60,14 @@ docker compose run --rm assistant demo
 docker compose run --rm assistant ask "Which device is the most suspicious and why?"
 ```
 
+Web panel:
+
+```bash
+python -m homesiem --no-llm serve            # http://127.0.0.1:8080 -> "Try with demo data"
+# or with Docker (Ollama + panel):
+docker compose up -d ollama panel            # http://localhost:8080
+```
+
 Example output: [docs/report/sample-report.en.md](docs/report/sample-report.en.md)
 
 ## Full setup
@@ -63,7 +76,7 @@ Example output: [docs/report/sample-report.en.md](docs/report/sample-report.en.m
 2. Load the rules from [`rules/`](rules/) via *Detections*
 3. Copy `config/config.example.yaml` → `config/config.yaml`, `assets.example.yaml` → `assets.yaml`
 4. Fetch logs (`scripts/fetch_so_logs.sh`) or point the assistant at Elasticsearch
-5. `docker compose run --rm assistant -c /work/config/config.yaml analyze`
+5. `docker compose up -d ollama panel` → open http://localhost:8080 and press **Run analysis**
 6. [Test the detections](docs/testing-detections.md) with `scripts/simulation/run_safe_tests.sh`
 
 ## Repository layout
@@ -76,6 +89,7 @@ HomeLabSiemAi/
 │       ├── analytics/       # beaconing, dns, network, anomaly (ML)
 │       ├── llm.py           # Ollama: triage, summary, Q&A
 │       ├── report.py        # Markdown/JSON report (EN/TR)
+│       ├── web.py           # local web panel (templates/dashboard.html)
 │       └── demo.py          # synthetic dataset with injected attacks
 ├── rules/
 │   ├── suricata/homenet.rules

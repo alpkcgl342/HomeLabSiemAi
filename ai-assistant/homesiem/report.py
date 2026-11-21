@@ -102,14 +102,40 @@ def render(ds: Dataset, findings: list[Finding], summary: str, stats: dict, cfg:
         top_talkers=top_talkers, top_domains=top_domains, mitre_counts=mitre_counts,
     )
     data = {"generated": datetime.now(timezone.utc).isoformat(), "period": [period_start, period_end],
-            "stats": stats, "summary": summary, "findings": [f.to_dict() for f in findings]}
+            "language": lang, "ai_model": ai_model,
+            "stats": stats, "summary": summary, "findings": [f.to_dict() for f in findings],
+            "charts": build_charts(ds, findings, talkers, top_domains, mitre_counts, sev)}
     return md, data
+
+
+def build_charts(ds: Dataset, findings: list[Finding], talkers: dict, top_domains, mitre_counts, sev) -> dict:
+    """Pre-aggregated series for the web panel (keeps raw logs out of the browser)."""
+    hourly: Counter = Counter(c.ts.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:00:00Z") for c in ds.conns)
+    dns_hourly: Counter = Counter(q.ts.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:00:00Z") for q in ds.dns)
+    hours = sorted(set(hourly) | set(dns_hourly))
+    events = [{"t": f.first_seen.astimezone(timezone.utc).isoformat(), "id": f.id, "severity": f.severity,
+               "title": f.title} for f in findings if f.first_seen]
+    host_risk: dict[str, int] = {}
+    for f in findings:
+        if f.host:
+            host_risk[f.host] = max(host_risk.get(f.host, 0), f.ai_risk or 0)
+    return {
+        "timeline": [{"t": h, "connections": hourly.get(h, 0), "dns": dns_hourly.get(h, 0)} for h in hours],
+        "events": events,
+        "severity": {k: sev.get(k, 0) for k in ("critical", "high", "medium", "low", "info")},
+        "top_talkers": [{"host": h, "connections": v[0], "bytes_out": v[1], "bytes_in": v[2],
+                         "max_risk": host_risk.get(h, 0)}
+                        for h, v in sorted(talkers.items(), key=lambda kv: -kv[1][1])[:10]],
+        "top_domains": [{"domain": d, "queries": n} for d, n in top_domains],
+        "mitre": [{"technique": t, "count": n} for t, n in mitre_counts],
+        "host_risk": sorted(({"host": h, "risk": r} for h, r in host_risk.items()), key=lambda x: -x["risk"]),
+    }
 
 
 def write(md: str, data: dict, out_dir: str, lang: str) -> tuple[Path, Path]:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y-%m-%d")
+    stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     md_path = out / f"report-{stamp}.{lang}.md"
     json_path = out / f"findings-{stamp}.json"
     md_path.write_text(md, encoding="utf-8")

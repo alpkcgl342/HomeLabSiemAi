@@ -1,5 +1,5 @@
 # AI assistant stack that runs on your PC next to the Security Onion VM.
-#   docker compose up -d ollama
+#   docker compose up -d ollama panel                # web panel: http://localhost:8080
 #   docker compose exec ollama ollama pull llama3.1:8b
 #   docker compose run --rm assistant demo          # synthetic data
 #   docker compose run --rm assistant -c /work/config/config.yaml analyze
@@ -34,6 +34,23 @@ services:
       # and reports/ resolve exactly like when running locally.
       - .:/work
     profiles: ["cli"]   # run on demand, not as a daemon
+
+  panel:
+    build: ./ai-assistant
+    image: homenet-siem-ai/assistant:latest
+    container_name: homesiem-panel
+    depends_on: [ollama]
+    working_dir: /work/ai-assistant
+    command: ["serve", "--host", "0.0.0.0", "--port", "8080"]
+    environment:
+      HOMESIEM_OLLAMA_URL: http://ollama:11434
+      HOMESIEM_TIMEZONE: Europe/Istanbul
+      HOMESIEM_CONFIG: /work/config/config.yaml   # falls back to defaults if missing
+    ports:
+      - "127.0.0.1:8080:8080"   # only reachable from this PC
+    volumes:
+      - .:/work
+    restart: unless-stopped
 
 volumes:
   ollama-models:

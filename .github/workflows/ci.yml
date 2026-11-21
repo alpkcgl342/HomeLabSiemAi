@@ -27,6 +27,13 @@ jobs:
       - run: python -m pytest -q
       - name: Generate demo report (no LLM in CI)
         run: python -m homesiem --no-llm -l tr demo --out /tmp/sample-data
+      - name: Web panel smoke test
+        run: |
+          python -m homesiem --no-llm serve --port 8080 &
+          sleep 3
+          curl -fsS http://127.0.0.1:8080/ | grep -q HomeLabSiemAi
+          curl -fsS http://127.0.0.1:8080/api/latest | python -c "import json,sys; d=json.load(sys.stdin); assert d['charts']['timeline']"
+          kill %1
       - uses: actions/upload-artifact@v4
         with:
           name: demo-report

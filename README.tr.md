@@ -20,6 +20,8 @@ flowchart LR
     AI --> REP[Haftalık rapor<br/>TR / EN]
 ```
 
+![Web paneli](docs/img/panel-dark.png)
+
 ## Özellikler
 
 - **18 özel Suricata kuralı**: ağ içi tarama, DNS atlatma ve DoH, DNS tünelleme, internetten gelen
@@ -35,6 +37,10 @@ flowchart LR
   - 1-10 arası risk puanı, açıklama, önerilen aksiyon ve yönetici özeti üretir.
   - `homesiem ask "..."` komutuyla sorulara cevap verir.
   - Prompt injection'a karşı önlemlidir. Ollama kapalıysa kural tabanlı triyaja geçer.
+- **Web paneli** (`homesiem serve`):
+  - Özet göstergeler, bulgu işaretli saatlik trafik grafiği, cihaz risk puanları, en çok veri gönderen cihazlar ve MITRE kapsamı.
+  - Filtrelenebilir bulgu tablosu (yapay zeka analizi ve kanıtlarla), "Yapay zekaya sor" kutusu ve tek tıkla analiz.
+  - TR/EN, açık/koyu tema. Yalnızca localhost'ta çalışır; CSP ve DNS rebinding korumalıdır.
 - **Raporlama**: Markdown rapor + `findings.json`, Türkçe 🇹🇷 veya İngilizce 🇬🇧.
 - **Detection-as-code**: GitHub Actions; lint, birim testleri, `sigma check`, Suricata sözdizimi
   kontrolü ve PCAP tekrar testi çalıştırır.
@@ -60,6 +66,14 @@ docker compose run --rm -e HOMESIEM_LANGUAGE=tr assistant demo
 docker compose run --rm -e HOMESIEM_LANGUAGE=tr assistant ask "En şüpheli cihaz hangisi ve neden?"
 ```
 
+Web paneli:
+
+```bash
+python -m homesiem --no-llm -l tr serve      # http://127.0.0.1:8080 -> "Demo verisiyle dene"
+# veya Docker ile (Ollama + panel):
+docker compose up -d ollama panel            # http://localhost:8080
+```
+
 Örnek çıktı: [docs/report/sample-report.tr.md](docs/report/sample-report.tr.md)
 
 ## Tam kurulum
@@ -69,7 +83,7 @@ docker compose run --rm -e HOMESIEM_LANGUAGE=tr assistant ask "En şüpheli ciha
 2. [`rules/`](rules/) klasöründeki kuralları *Detections* ekranından ekleyin
 3. `config/config.example.yaml` → `config/config.yaml`, `assets.example.yaml` → `assets.yaml` olarak kopyalayıp düzenleyin
 4. Logları çekin (`scripts/fetch_so_logs.sh`) ya da asistanı doğrudan Elasticsearch'e bağlayın
-5. `docker compose run --rm assistant -c /work/config/config.yaml analyze`
+5. `docker compose up -d ollama panel` ile paneli başlatın, http://localhost:8080 adresini açıp **Analizi çalıştır**'a basın
 6. `scripts/simulation/run_safe_tests.sh` ile [tespitleri test edin](docs/testing-detections.md)
 
 ## Klasör yapısı
@@ -82,6 +96,7 @@ HomeLabSiemAi/
 │       ├── analytics/       # beaconing, dns, network, anomaly (ML)
 │       ├── llm.py           # Ollama: triyaj, özet, soru-cevap
 │       ├── report.py        # Markdown/JSON rapor (TR/EN)
+│       ├── web.py           # yerel web paneli (templates/dashboard.html)
 │       └── demo.py          # saldırı senaryolu sentetik veri
 ├── rules/
 │   ├── suricata/homenet.rules
