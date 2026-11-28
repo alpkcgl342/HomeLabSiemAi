@@ -23,7 +23,8 @@ services:
 
   assistant:
     build: ./ai-assistant
-    image: homenet-siem-ai/assistant:latest
+    image: homelabsiemai-assistant:local
+    pull_policy: build   # local image, built from ./ai-assistant, never pulled
     depends_on: [ollama]
     working_dir: /work/ai-assistant
     environment:
@@ -37,7 +38,8 @@ services:
 
   panel:
     build: ./ai-assistant
-    image: homenet-siem-ai/assistant:latest
+    image: homelabsiemai-assistant:local
+    pull_policy: build   # local image, built from ./ai-assistant, never pulled
     container_name: homesiem-panel
     depends_on: [ollama]
     working_dir: /work/ai-assistant
