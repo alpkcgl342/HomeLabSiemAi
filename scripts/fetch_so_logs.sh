@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# (Linux/macOS; on Windows use scripts/fetch_so_logs.ps1)
 # Copy the last N days of Zeek + Suricata logs from the Security Onion VM to ./so-logs
 # so the AI assistant can analyse them in "files" mode.
 #

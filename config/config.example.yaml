@@ -12,8 +12,11 @@ source:
   # elasticsearch -> query Security Onion's Elasticsearch directly (see docs/setup-security-onion.md)
   type: files
   files:
+    # Demo data: ../sample-data/zeek + ../sample-data/suricata/eve.json
+    # Real Security Onion logs (scripts/fetch_so_logs.ps1): ../so-logs/suricata/eve*.json
     zeek_dir: ../sample-data/zeek
     suricata_eve: ../sample-data/suricata/eve.json
+    metadata: auto        # auto | zeek | suricata  (SO 3 EVAL = suricata)
   elasticsearch:
     url: https://192.168.1.250:9200   # Security Onion VM IP
     username: ""                       # better: set HOMESIEM_ES_USER / HOMESIEM_ES_PASSWORD
@@ -22,12 +25,12 @@ source:
     lookback_hours: 168                # 7 days
     max_docs: 20000
     index: "logs-*"
-    # Check these in Security Onion -> Hunt and adjust if your version differs
+    # Verified on Security Onion 3.4 EVAL (Suricata metadata). With Zeek use zeek.* datasets.
     queries:
-      alerts: "event.dataset:alert"
-      conn: "event.dataset:conn"
-      dns: "event.dataset:dns"
-      dhcp: "event.dataset:dhcp"
+      alerts: "event.dataset:suricata.alert OR event.dataset:sigma.alert"
+      conn: "event.dataset:suricata.conn"
+      dns: "event.dataset:suricata.dns AND dns.query.type:request"
+      dhcp: "event.dataset:suricata.dhcp"
 
 assets_file: ../assets.yaml          # trusted device inventory (copy assets.example.yaml)
 
