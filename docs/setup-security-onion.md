@@ -146,11 +146,30 @@ Then generate test traffic (see [testing-detections.md](testing-detections.md)) 
 
 ### Option A - copy logs (simplest, works everywhere)
 
-```bash
-SO_HOST=192.168.1.250 SO_USER=<your-so-user> DAYS=7 scripts/fetch_so_logs.sh
-cp config/config.example.yaml config/config.yaml
-# edit: zeek_dir: ../so-logs/zeek   suricata_eve: ../so-logs/eve.merged.json
+Security Onion 3 EVAL uses **Suricata as its metadata engine** (no Zeek): connections, DNS and DHCP
+are `flow`/`dns`/`dhcp` events inside `/nsm/suricata/eve-*.json`, next to the alerts. The assistant
+reads them directly (`metadata: auto` picks Suricata when no Zeek logs are present).
+
+Windows (PowerShell, uses the built-in OpenSSH client):
+
+```powershell
+.\scripts\fetch_so_logs.ps1 -SoUser <linux-user> -Hours 24
 ```
+
+Linux/macOS: `SO_HOST=192.168.1.250 SO_USER=<linux-user> DAYS=1 scripts/fetch_so_logs.sh`
+
+Then in `config/config.yaml`:
+
+```yaml
+source:
+  type: files
+  files:
+    suricata_eve: ../so-logs/suricata/eve*.json
+    metadata: auto
+```
+
+> Sigma alerts (ElastAlert) are stored only in Elasticsearch (`logs-detections.alerts-so`), so
+> they are not in the copied files. Use option B to include them.
 
 ### Option B - query Elasticsearch directly
 
@@ -159,8 +178,10 @@ cp config/config.example.yaml config/config.yaml
 2. Create a dedicated, read-only user for the assistant.
 3. In `config/config.yaml` set `source.type: elasticsearch`, the URL, and export the
    credentials as `HOMESIEM_ES_USER` / `HOMESIEM_ES_PASSWORD` (do not commit them).
-4. Check field/dataset names in *Hunt* (e.g. `event.dataset:conn`) and adjust `queries:` if
-   your version differs.
+4. The default `queries:` match Security Onion 3.4 EVAL (`suricata.conn`, `suricata.dns`,
+   `suricata.dhcp`, `suricata.alert`, `sigma.alert`); with Zeek, check the names in *Hunt*.
+   Port 9200 is not open to analysts by default - add a custom port group (TCP 9200) and host group
+   (your PC) under *Administration → Configuration → firewall*.
 
 ### Run
 

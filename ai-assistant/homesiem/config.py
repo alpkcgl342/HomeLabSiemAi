@@ -17,6 +17,7 @@ DEFAULTS: dict[str, Any] = {
         "files": {
             "zeek_dir": "../sample-data/zeek",
             "suricata_eve": "../sample-data/suricata/eve.json",
+            "metadata": "auto",  # auto | zeek | suricata
         },
         "elasticsearch": {
             "url": "https://securityonion.local:9200",
@@ -26,11 +27,13 @@ DEFAULTS: dict[str, Any] = {
             "lookback_hours": 168,
             "max_docs": 20000,
             "index": "logs-*",
+            # Security Onion 3.x with Suricata metadata (default EVAL install).
+            # With Zeek use: conn: "event.dataset:zeek.conn" (check Hunt for your names).
             "queries": {
-                "alerts": "event.dataset:alert",
-                "conn": "event.dataset:conn",
-                "dns": "event.dataset:dns",
-                "dhcp": "event.dataset:dhcp",
+                "alerts": "event.dataset:suricata.alert OR event.dataset:sigma.alert",
+                "conn": "event.dataset:suricata.conn",
+                "dns": "event.dataset:suricata.dns AND dns.query.type:request",
+                "dhcp": "event.dataset:suricata.dhcp",
             },
         },
     },
