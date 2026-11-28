@@ -17,8 +17,12 @@ need() { command -v "$1" >/dev/null || { echo "missing tool: $1"; return 1; }; }
 banner() { printf '\n\033[1;36m==> %s\033[0m  (expect: %s)\n' "$1" "$2"; }
 
 t_ids_sanity() {
-  banner "IDS sanity check (testmynids.org)" "ET/GPL 'id check returned root' (sid 2100498)"
-  curl -s --max-time 10 http://testmynids.org/uid/index.html >/dev/null
+  # testmynids.org expired in 2026 and no longer returns the uid=0 test page.
+  # A plain-HTTP request with the Nmap NSE user agent is a harmless replacement
+  # (verified on Security Onion 3.4: "ET SCAN Possible Nmap User-Agent Observed", sid 2024364).
+  banner "IDS sanity check (Nmap NSE user agent)" "ET SCAN Possible Nmap User-Agent Observed (sid 2024364)"
+  curl -s --max-time 10 -A "Mozilla/5.0 (compatible; Nmap Scripting Engine; https://nmap.org/book/nse.html)" \
+    http://example.com >/dev/null
 }
 t_portscan() {
   need nmap || return
