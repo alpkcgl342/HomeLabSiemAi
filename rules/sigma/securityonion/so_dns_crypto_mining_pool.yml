@@ -1,0 +1,29 @@
+title: HOMENET DNS Lookup of Cryptocurrency Mining Pool
+id: a596a763-de7c-4135-a214-34f5add7948f
+status: experimental
+description: A device resolved a well-known mining pool - possible cryptojacking of a PC, NAS or IoT device.
+references:
+  - https://attack.mitre.org/techniques/T1496/
+author: HomeLabSiemAi
+date: 2026-11-28
+tags:
+  - attack.impact
+  - attack.t1496
+logsource:
+  category: network
+  service: dns
+detection:
+  selection:
+    dns.query.type: 'request'
+    query|contains:
+      - 'nanopool.org'
+      - 'supportxmr.com'
+      - '2miners.com'
+      - 'minexmr.com'
+      - 'f2pool.com'
+      - 'moneroocean.stream'
+      - 'herominers.com'
+  condition: selection
+falsepositives:
+  - Intentional mining by the owner
+level: high
