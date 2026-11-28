@@ -40,6 +40,18 @@ are validated with `sigma check`, and the analytics have unit tests with injecte
 | [Executable or Script Downloaded From Raw IP Address](../rules/sigma/zeek/zeek_http_executable_from_raw_ip.yml) | zeek/http | high | [T1105](https://attack.mitre.org/techniques/T1105/) |
 | [Scripting Tool User-Agent From Home Device](../rules/sigma/zeek/zeek_http_scripting_user_agent.yml) | zeek/http | low | [T1105](https://attack.mitre.org/techniques/T1105/), [T1071.001](https://attack.mitre.org/techniques/T1071/001/) |
 
+## Sigma for Security Onion 3.x - `rules/sigma/securityonion/`
+
+Security Onion's Sigma pipeline has no `product: zeek` mapping, so the portable rules above do not
+match there. These variants use `category: network / service: dns` and were verified on Security
+Onion 3.4 with *CONVERT → TEST IN KIBANA* (10 matching `suricata.dns` events for a duckdns test lookup).
+
+| Rule | Level | Technique |
+|---|---|---|
+| HOMENET Dynamic DNS or Tunnelling Service Lookup | medium | [T1568](https://attack.mitre.org/techniques/T1568/) |
+| HOMENET Long Random TXT DNS Query | high | [T1071.004](https://attack.mitre.org/techniques/T1071/004/) |
+| HOMENET DNS Lookup of Cryptocurrency Mining Pool | high | [T1496](https://attack.mitre.org/techniques/T1496/) |
+
 ## Behavioural analytics - `ai-assistant/homesiem/analytics/`
 
 | Detector | Idea | Default threshold | Technique |

@@ -1,0 +1,30 @@
+title: HOMENET Dynamic DNS or Tunnelling Service Lookup
+id: 30abc651-4a12-4c78-9207-9ace8dfc2c91
+status: experimental
+description: A home device resolved a free dynamic-DNS or reverse-tunnel domain, often abused for malware C2 and phishing.
+references:
+  - https://attack.mitre.org/techniques/T1568/
+author: HomeLabSiemAi
+date: 2026-11-28
+tags:
+  - attack.command-and-control
+  - attack.t1568
+logsource:
+  category: network
+  service: dns
+detection:
+  selection:
+    dns.query.type: 'request'
+    query|endswith:
+      - '.duckdns.org'
+      - '.no-ip.com'
+      - '.no-ip.org'
+      - '.ddns.net'
+      - '.ngrok.io'
+      - '.ngrok-free.app'
+      - '.trycloudflare.com'
+      - '.serveo.net'
+  condition: selection
+falsepositives:
+  - Your own self-hosted services
+level: medium
