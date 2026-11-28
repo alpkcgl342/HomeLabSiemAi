@@ -5,59 +5,60 @@
 #     suricata -T -S rules/suricata/homenet.rules -c /etc/suricata/suricata.yaml
 #  Variables used: $HOME_NET, $EXTERNAL_NET, $DNS_SERVERS (set DNS_SERVERS to your
 #  router / Pi-hole IP in Security Onion -> Configuration -> suricata -> vars).
-#  Every rule carries MITRE ATT&CK metadata so the AI assistant / report can map it.
+#  Every rule carries MITRE ATT&CK metadata so the AI assistant / report can map it, and an
+#  ET-style signature_severity (Informational/Minor/Major/Critical) so Security Onion shows a severity.
 # =============================================================================
 
 # ----------------------------------------------------------------- Reconnaissance
 # Many SYNs from one internal host -> a scanner on the LAN (nmap, malware worm, rogue device)
-alert tcp $HOME_NET any -> $HOME_NET any (msg:"HOMENET Possible internal TCP SYN port scan"; flow:stateless; flags:S,12; threshold:type both, track by_src, count 60, seconds 20; classtype:attempted-recon; sid:9100001; rev:1; metadata:mitre_tactic_id TA0007, mitre_technique_id T1046, created_at 2026_11_21;)
+alert tcp $HOME_NET any -> $HOME_NET any (msg:"HOMENET Possible internal TCP SYN port scan"; flow:stateless; flags:S,12; threshold:type both, track by_src, count 60, seconds 20; classtype:attempted-recon; sid:9100001; rev:2; metadata:mitre_tactic_id TA0007, mitre_technique_id T1046, signature_severity Major, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # ICMP echo sweep across the LAN
-alert icmp $HOME_NET any -> $HOME_NET any (msg:"HOMENET ICMP ping sweep on LAN"; itype:8; threshold:type both, track by_src, count 20, seconds 10; classtype:attempted-recon; sid:9100002; rev:1; metadata:mitre_tactic_id TA0007, mitre_technique_id T1018, created_at 2026_11_21;)
+alert icmp $HOME_NET any -> $HOME_NET any (msg:"HOMENET ICMP ping sweep on LAN"; itype:8; threshold:type both, track by_src, count 20, seconds 10; classtype:attempted-recon; sid:9100002; rev:2; metadata:mitre_tactic_id TA0007, mitre_technique_id T1018, signature_severity Minor, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # ----------------------------------------------------------------- DNS abuse / bypass
 # A device talks to an internet DNS server directly instead of the router / Pi-hole
-alert udp [$HOME_NET,!$DNS_SERVERS] any -> $EXTERNAL_NET 53 (msg:"HOMENET DNS query bypassing local resolver"; flow:to_server; threshold:type limit, track by_src, count 1, seconds 3600; classtype:policy-violation; sid:9100003; rev:1; metadata:mitre_tactic_id TA0011, mitre_technique_id T1071.004, created_at 2026_11_21;)
+alert udp [$HOME_NET,!$DNS_SERVERS] any -> $EXTERNAL_NET 53 (msg:"HOMENET DNS query bypassing local resolver"; flow:to_server; threshold:type limit, track by_src, count 1, seconds 3600; classtype:policy-violation; sid:9100003; rev:2; metadata:mitre_tactic_id TA0011, mitre_technique_id T1071.004, signature_severity Minor, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # DNS-over-HTTPS to well-known public resolvers (hides DNS from the SIEM and Pi-hole)
-alert tls $HOME_NET any -> $EXTERNAL_NET 443 (msg:"HOMENET DNS-over-HTTPS provider contacted (possible DNS bypass)"; flow:established,to_server; tls.sni; content:"cloudflare-dns.com"; endswith; threshold:type limit, track by_src, count 1, seconds 86400; classtype:policy-violation; sid:9100004; rev:1; metadata:mitre_tactic_id TA0011, mitre_technique_id T1071.004, created_at 2026_11_21;)
-alert tls $HOME_NET any -> $EXTERNAL_NET 443 (msg:"HOMENET DNS-over-HTTPS provider contacted (possible DNS bypass)"; flow:established,to_server; tls.sni; content:"dns.google"; endswith; threshold:type limit, track by_src, count 1, seconds 86400; classtype:policy-violation; sid:9100014; rev:1; metadata:mitre_tactic_id TA0011, mitre_technique_id T1071.004, created_at 2026_11_21;)
+alert tls $HOME_NET any -> $EXTERNAL_NET 443 (msg:"HOMENET DNS-over-HTTPS provider contacted (possible DNS bypass)"; flow:established,to_server; tls.sni; content:"cloudflare-dns.com"; endswith; threshold:type limit, track by_src, count 1, seconds 86400; classtype:policy-violation; sid:9100004; rev:2; metadata:mitre_tactic_id TA0011, mitre_technique_id T1071.004, signature_severity Informational, created_at 2026_11_21, updated_at 2026_11_24;)
+alert tls $HOME_NET any -> $EXTERNAL_NET 443 (msg:"HOMENET DNS-over-HTTPS provider contacted (possible DNS bypass)"; flow:established,to_server; tls.sni; content:"dns.google"; endswith; threshold:type limit, track by_src, count 1, seconds 86400; classtype:policy-violation; sid:9100014; rev:2; metadata:mitre_tactic_id TA0011, mitre_technique_id T1071.004, signature_severity Informational, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # Very long DNS names are a common sign of DNS tunneling / data exfiltration
-alert dns $HOME_NET any -> any any (msg:"HOMENET Unusually long DNS query (possible tunneling)"; dns.query; bsize:>90; threshold:type limit, track by_src, count 1, seconds 300; classtype:bad-unknown; sid:9100005; rev:1; metadata:mitre_tactic_id TA0010, mitre_technique_id T1071.004, created_at 2026_11_21;)
+alert dns $HOME_NET any -> any any (msg:"HOMENET Unusually long DNS query (possible tunneling)"; dns.query; bsize:>90; threshold:type limit, track by_src, count 1, seconds 300; classtype:bad-unknown; sid:9100005; rev:2; metadata:mitre_tactic_id TA0010, mitre_technique_id T1071.004, signature_severity Major, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # Free dynamic-DNS / tunnelling services often used by malware C2 and phishing
-alert dns $HOME_NET any -> any any (msg:"HOMENET DNS lookup of dynamic DNS / tunnel service"; dns.query; pcre:"/\.(duckdns\.org|no-ip\.(com|org|biz)|ddns\.net|ngrok(-free)?\.(io|app)|trycloudflare\.com)$/i"; threshold:type limit, track by_src, count 1, seconds 3600; classtype:bad-unknown; sid:9100006; rev:1; metadata:mitre_tactic_id TA0011, mitre_technique_id T1568, created_at 2026_11_21;)
+alert dns $HOME_NET any -> any any (msg:"HOMENET DNS lookup of dynamic DNS / tunnel service"; dns.query; pcre:"/\.(duckdns\.org|no-ip\.(com|org|biz)|ddns\.net|ngrok(-free)?\.(io|app)|trycloudflare\.com)$/i"; threshold:type limit, track by_src, count 1, seconds 3600; classtype:bad-unknown; sid:9100006; rev:2; metadata:mitre_tactic_id TA0011, mitre_technique_id T1568, signature_severity Minor, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # ----------------------------------------------------------------- Exposure from the internet
 # Inbound Telnet - the #1 way IoT botnets (Mirai & co.) get in
-alert tcp $EXTERNAL_NET any -> $HOME_NET [23,2323] (msg:"HOMENET Inbound Telnet attempt to home device"; flow:to_server; flags:S,12; threshold:type limit, track by_src, count 1, seconds 600; classtype:attempted-admin; sid:9100007; rev:1; metadata:mitre_tactic_id TA0001, mitre_technique_id T1190, created_at 2026_11_21;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET [23,2323] (msg:"HOMENET Inbound Telnet attempt to home device"; flow:to_server; flags:S,12; threshold:type limit, track by_src, count 1, seconds 600; classtype:attempted-admin; sid:9100007; rev:2; metadata:mitre_tactic_id TA0001, mitre_technique_id T1190, signature_severity Major, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # Inbound RDP / VNC / SMB reaching the LAN means a port-forward or UPnP hole exists
-alert tcp $EXTERNAL_NET any -> $HOME_NET [3389,5900,445] (msg:"HOMENET Inbound remote access/SMB port reachable from internet"; flow:to_server; flags:S,12; threshold:type limit, track by_dst, count 1, seconds 600; classtype:attempted-admin; sid:9100008; rev:1; metadata:mitre_tactic_id TA0001, mitre_technique_id T1133, created_at 2026_11_21;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET [3389,5900,445] (msg:"HOMENET Inbound remote access/SMB port reachable from internet"; flow:to_server; flags:S,12; threshold:type limit, track by_dst, count 1, seconds 600; classtype:attempted-admin; sid:9100008; rev:2; metadata:mitre_tactic_id TA0001, mitre_technique_id T1133, signature_severity Major, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # SSH brute force (internal or external source)
-alert tcp any any -> $HOME_NET 22 (msg:"HOMENET Possible SSH brute force"; flow:to_server; flags:S,12; threshold:type threshold, track by_src, count 10, seconds 60; classtype:attempted-admin; sid:9100009; rev:1; metadata:mitre_tactic_id TA0006, mitre_technique_id T1110, created_at 2026_11_21;)
+alert tcp any any -> $HOME_NET 22 (msg:"HOMENET Possible SSH brute force"; flow:to_server; flags:S,12; threshold:type threshold, track by_src, count 10, seconds 60; classtype:attempted-admin; sid:9100009; rev:2; metadata:mitre_tactic_id TA0006, mitre_technique_id T1110, signature_severity Major, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # UPnP/SSDP answered from the internet (router exposing UPnP on WAN)
-alert udp $EXTERNAL_NET any -> $HOME_NET 1900 (msg:"HOMENET SSDP/UPnP request from internet"; threshold:type limit, track by_dst, count 1, seconds 3600; classtype:attempted-recon; sid:9100010; rev:1; metadata:mitre_tactic_id TA0001, mitre_technique_id T1190, created_at 2026_11_21;)
+alert udp $EXTERNAL_NET any -> $HOME_NET 1900 (msg:"HOMENET SSDP/UPnP request from internet"; threshold:type limit, track by_dst, count 1, seconds 3600; classtype:attempted-recon; sid:9100010; rev:2; metadata:mitre_tactic_id TA0001, mitre_technique_id T1190, signature_severity Minor, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # ----------------------------------------------------------------- Risky outbound behaviour
 # Cleartext FTP credentials leaving the house
-alert tcp $HOME_NET any -> any 21 (msg:"HOMENET Cleartext FTP password sent"; flow:to_server,established; content:"PASS "; depth:5; classtype:policy-violation; sid:9100011; rev:1; metadata:mitre_tactic_id TA0006, mitre_technique_id T1552, created_at 2026_11_21;)
+alert tcp $HOME_NET any -> any 21 (msg:"HOMENET Cleartext FTP password sent"; flow:to_server,established; content:"PASS "; depth:5; classtype:policy-violation; sid:9100011; rev:2; metadata:mitre_tactic_id TA0006, mitre_technique_id T1552, signature_severity Minor, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # Windows executable downloaded over plain HTTP
-alert http $EXTERNAL_NET any -> $HOME_NET any (msg:"HOMENET Windows executable downloaded over plain HTTP"; flow:established,to_client; file.data; content:"MZ"; depth:2; content:"This program cannot be run in DOS mode"; distance:0; classtype:bad-unknown; sid:9100012; rev:1; metadata:mitre_tactic_id TA0011, mitre_technique_id T1105, created_at 2026_11_21;)
+alert http $EXTERNAL_NET any -> $HOME_NET any (msg:"HOMENET Windows executable downloaded over plain HTTP"; flow:established,to_client; file.data; content:"MZ"; depth:2; content:"This program cannot be run in DOS mode"; distance:0; classtype:bad-unknown; sid:9100012; rev:2; metadata:mitre_tactic_id TA0011, mitre_technique_id T1105, signature_severity Major, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # Remote-access tools - common in "tech support" scams targeting families
-alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"HOMENET Remote access tool (AnyDesk) connection"; flow:established,to_server; tls.sni; content:"anydesk.com"; endswith; threshold:type limit, track by_src, count 1, seconds 3600; classtype:policy-violation; sid:9100013; rev:1; metadata:mitre_tactic_id TA0011, mitre_technique_id T1219, created_at 2026_11_21;)
-alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"HOMENET Remote access tool (TeamViewer) connection"; flow:established,to_server; tls.sni; content:"teamviewer.com"; endswith; threshold:type limit, track by_src, count 1, seconds 3600; classtype:policy-violation; sid:9100015; rev:1; metadata:mitre_tactic_id TA0011, mitre_technique_id T1219, created_at 2026_11_21;)
+alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"HOMENET Remote access tool (AnyDesk) connection"; flow:established,to_server; tls.sni; content:"anydesk.com"; endswith; threshold:type limit, track by_src, count 1, seconds 3600; classtype:policy-violation; sid:9100013; rev:2; metadata:mitre_tactic_id TA0011, mitre_technique_id T1219, signature_severity Major, created_at 2026_11_21, updated_at 2026_11_24;)
+alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"HOMENET Remote access tool (TeamViewer) connection"; flow:established,to_server; tls.sni; content:"teamviewer.com"; endswith; threshold:type limit, track by_src, count 1, seconds 3600; classtype:policy-violation; sid:9100015; rev:2; metadata:mitre_tactic_id TA0011, mitre_technique_id T1219, signature_severity Major, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # Cryptocurrency mining (Stratum protocol) - hijacked device or unwanted miner
-alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"HOMENET Cryptomining Stratum protocol detected"; flow:established,to_server; content:"mining.subscribe"; fast_pattern; classtype:policy-violation; sid:9100016; rev:1; metadata:mitre_tactic_id TA0040, mitre_technique_id T1496, created_at 2026_11_21;)
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"HOMENET Cryptomining Stratum protocol detected"; flow:established,to_server; content:"mining.subscribe"; fast_pattern; classtype:policy-violation; sid:9100016; rev:2; metadata:mitre_tactic_id TA0040, mitre_technique_id T1496, signature_severity Major, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # Tor client traffic (default ORPort / directory ports)
-alert tcp $HOME_NET any -> $EXTERNAL_NET [9001,9030,9050,9150] (msg:"HOMENET Possible Tor connection"; flow:to_server; flags:S,12; threshold:type limit, track by_src, count 1, seconds 3600; classtype:policy-violation; sid:9100017; rev:1; metadata:mitre_tactic_id TA0011, mitre_technique_id T1090.003, created_at 2026_11_21;)
+alert tcp $HOME_NET any -> $EXTERNAL_NET [9001,9030,9050,9150] (msg:"HOMENET Possible Tor connection"; flow:to_server; flags:S,12; threshold:type limit, track by_src, count 1, seconds 3600; classtype:policy-violation; sid:9100017; rev:2; metadata:mitre_tactic_id TA0011, mitre_technique_id T1090.003, signature_severity Minor, created_at 2026_11_21, updated_at 2026_11_24;)
 
 # IoT / camera talking telnet or SMB *outbound* is almost never legitimate
-alert tcp $HOME_NET any -> $EXTERNAL_NET [23,445] (msg:"HOMENET Outbound Telnet/SMB to internet"; flow:to_server; flags:S,12; threshold:type limit, track by_src, count 1, seconds 600; classtype:trojan-activity; sid:9100018; rev:1; metadata:mitre_tactic_id TA0008, mitre_technique_id T1021, created_at 2026_11_21;)
+alert tcp $HOME_NET any -> $EXTERNAL_NET [23,445] (msg:"HOMENET Outbound Telnet/SMB to internet"; flow:to_server; flags:S,12; threshold:type limit, track by_src, count 1, seconds 600; classtype:trojan-activity; sid:9100018; rev:2; metadata:mitre_tactic_id TA0008, mitre_technique_id T1021, signature_severity Critical, created_at 2026_11_21, updated_at 2026_11_24;)
