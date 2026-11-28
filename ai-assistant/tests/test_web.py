@@ -96,3 +96,11 @@ def test_analyze_runs_in_background(server):
     assert len(state.findings_files()) == before + 1
     _, body, _ = req(base + "/api/history")
     assert len(json.loads(body)) == before + 1
+
+
+def test_panel_rereads_config_before_each_run(tmp_path):
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text("language: en\n")
+    state = PanelState(load_config(str(cfg_file)), str(cfg_file))
+    cfg_file.write_text("language: tr\n")
+    assert state.reload_config()["language"] == "tr"

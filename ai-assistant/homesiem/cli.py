@@ -111,7 +111,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "serve":
         from .web import serve
 
-        serve(cfg, host=args.host, port=args.port, extra_hosts=args.allow_host)
+        serve(cfg, host=args.host, port=args.port, extra_hosts=args.allow_host,
+              config_path=config_path, overrides={"no_llm": args.no_llm})
         return 0
 
     if args.cmd in ("demo", "analyze"):

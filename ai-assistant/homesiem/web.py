@@ -34,8 +34,10 @@ CSP = ("default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 
 
 
 class PanelState:
-    def __init__(self, cfg: dict):
+    def __init__(self, cfg: dict, config_path: str | None = None, overrides: dict | None = None):
         self.cfg = cfg
+        self.config_path = config_path  # re-read before every analysis run
+        self.overrides = overrides or {}
         self.lock = threading.Lock()
         self.running = False
         self.last_error: str | None = None
@@ -66,6 +68,21 @@ class PanelState:
                         "high_or_critical": sev.get("high", 0) + sev.get("critical", 0)})
         return out
 
+    def reload_config(self) -> dict:
+        """Pick up edits to config.yaml without restarting the panel."""
+        if self.config_path:
+            from .config import load_config
+
+            try:
+                fresh = load_config(self.config_path)
+                if self.overrides.get("no_llm"):
+                    fresh["llm"]["enabled"] = False
+                self.cfg = fresh
+            except Exception as exc:  # keep the last good config, surface the problem
+                log.error("Could not reload %s: %s", self.config_path, exc)
+                raise
+        return json.loads(json.dumps(self.cfg))  # deep copy
+
     def start_run(self, mode: str, language: str | None) -> bool:
         with self.lock:
             if self.running:
@@ -79,7 +96,7 @@ class PanelState:
         from .cli import pipeline, use_demo_data
 
         try:
-            cfg = json.loads(json.dumps(self.cfg))  # deep copy
+            cfg = self.reload_config()
             if language in ("en", "tr"):
                 cfg["language"] = language
             if mode == "demo":
@@ -182,8 +199,9 @@ def make_handler(state: PanelState, allowed_hosts: set[str]):
     return Handler
 
 
-def serve(cfg: dict, host: str = "127.0.0.1", port: int = 8080, extra_hosts: list[str] | None = None) -> None:
-    state = PanelState(cfg)
+def serve(cfg: dict, host: str = "127.0.0.1", port: int = 8080, extra_hosts: list[str] | None = None,
+          config_path: str | None = None, overrides: dict | None = None) -> None:
+    state = PanelState(cfg, config_path, overrides)
     allowed = {"127.0.0.1", "localhost", "::1", *(h.lower() for h in (extra_hosts or []))}
     if host not in ("0.0.0.0", "::"):
         allowed.add(host.lower())
