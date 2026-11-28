@@ -24,7 +24,14 @@ from .sources import build_source
 
 def pipeline(cfg: dict) -> tuple[Path, Path]:
     is_home = make_home_check(cfg["home_net"])
-    ds = build_source(cfg).load()
+    source = build_source(cfg)
+    ds = source.load()
+    if not any(ds.summary().values()):
+        # Never let the LLM write "everything looks fine" about an empty dataset.
+        where = (f"eve={cfg['source']['files']['suricata_eve']} "
+                 f"({len(source._eve_files())} file(s) matched), zeek_dir={cfg['source']['files']['zeek_dir']}"
+                 if cfg["source"]["type"] == "files" else cfg["source"]["elasticsearch"]["url"])
+        raise RuntimeError(f"No log data found - check the source paths in config.yaml: {where}")
     findings = ds.alerts + run_all(ds, cfg)
     stats = report.build_stats(ds, findings, is_home)
     llm = OllamaClient(cfg["llm"], cfg["language"])

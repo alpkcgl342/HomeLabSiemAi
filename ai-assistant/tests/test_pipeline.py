@@ -118,3 +118,11 @@ def test_llm_triage_with_mocked_ollama(dataset, cfg, monkeypatch):
     monkeypatch.setattr(client, "chat", fake_chat)
     client.triage(findings)
     assert all(f.ai_risk == 9 and f.ai_action == "izole et" for f in findings)
+
+
+def test_empty_dataset_raises_instead_of_reporting(tmp_path, cfg):
+    from homesiem.cli import pipeline
+
+    cfg["source"]["files"].update(zeek_dir=str(tmp_path / "none"), suricata_eve=str(tmp_path / "eve*.json"))
+    with pytest.raises(RuntimeError, match="No log data found"):
+        pipeline(cfg)
